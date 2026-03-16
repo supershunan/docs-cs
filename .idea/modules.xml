@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../publicity-system-client/.idea/SearchFile.iml" filepath="$PROJECT_DIR$/../publicity-system-client/.idea/SearchFile.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../cach/VitepressSimple/.idea/VitepressSimple.iml" filepath="$PROJECT_DIR$/../../cach/VitepressSimple/.idea/VitepressSimple.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../cach/my1/.idea/my1.iml" filepath="$PROJECT_DIR$/../../cach/my1/.idea/my1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/wails2-template-vue.iml" filepath="$PROJECT_DIR$/.idea/wails2-template-vue.iml" />
+    </modules>
+  </component>
+</project>
