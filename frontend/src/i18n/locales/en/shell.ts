@@ -13,6 +13,10 @@ export const EnShell = {
   runPathEmpty: "Run Path Can Not Be Empty",
   //"cmd不能为空"
   cmdEmpty: "Cmd Can Not Be Empty",
+  //git commit 弹窗
+  commitMessageTitle: "Git Commit",
+  commitMessagePlaceholder: "Enter commit message",
+  commitMessageEmpty: "Please enter a commit message",
 
   docsBuild: "Docs Build Command",
   //运行目录

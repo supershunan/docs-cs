@@ -1,7 +1,7 @@
 <template>
   <a-dropdown class="mx-1" arrow>
     <icon-park
-      class="select-none cursor-pointer"
+      class="cursor-pointer select-none"
       :size="storeLayout.editorToolIconSize"
       fill="black"
       strokeLinejoin="bevel"
@@ -134,7 +134,7 @@
     <div
       v-show="Object.keys(storeShell.messages).length > 0"
       style="height: 45vh; overflow-y: auto"
-      class="bg-black text-white mt-4 px-5 pt-5 pb-10"
+      class="px-5 pt-5 pb-10 mt-4 text-white bg-black"
     >
       <pre v-html="storeShell.messages[currShellIndex]"></pre>
     </div>
@@ -144,7 +144,7 @@
         Object.keys(storeShell.messages).length > 0 &&
         storeIndex.systemType != SystemWindows
       "
-      class="flex mt-5 justify-end items-center"
+      class="flex justify-end items-center mt-5"
     >
       <!--          <a-button class="mx-2 bg-orange-200">移除当前终端</a-button>-->
       <a-button
@@ -158,6 +158,24 @@
     <div v-show="Object.keys(storeShell.messages).length == 0">
       <a-empty :description="lang('pageIndex.shell.noRunTerminal')"></a-empty>
     </div>
+  </a-modal>
+
+  <!--  Git Commit 提交描述弹窗-->
+  <a-modal
+    :style="StyleNoDrag"
+    v-model:open="isShowCommitModal"
+    :title="lang('pageIndex.shell.commitMessageTitle')"
+    :ok-button-props="{ class: 'bg-blue-500' }"
+    :ok-text="lang('common.confirm')"
+    :cancel-text="lang('common.cancel')"
+    @ok="confirmCommit"
+  >
+    <a-textarea
+      v-model:value="commitMessage"
+      :placeholder="lang('pageIndex.shell.commitMessagePlaceholder')"
+      :rows="4"
+      class="mt-2"
+    />
   </a-modal>
 </template>
 <script setup lang="ts">
@@ -184,6 +202,12 @@ const storeShell = useShellStore();
 const currShellIndex = ref(0);
 const isShowShellEdit = ref(false);
 const isShowShellLog = ref(false);
+const isShowCommitModal = ref(false);
+const commitMessage = ref("");
+const pendingCommitIndex = ref(-1);
+
+/** cmdList 中 git commit 的索引 */
+const GIT_COMMIT_INDEX = 5;
 
 interface CmdItem {
   menuLabel: string;
@@ -262,8 +286,6 @@ const setCmdList = () => {
 //isSystemShell 是否使用系统自带的终端
 const createAndRunCmd = async (index: number) => {
   const cmd = cmdList.value[index].cmd;
-  const isAlone = cmdList.value[index].isAlone;
-  const isSystemShell = cmdList.value[index].isSystemShell;
   if (IsEmptyValue(storeShell.vpsimpleConfig.shellBaseDir)) {
     ToastError(lang("pageIndex.shell.runPathEmpty"));
     return;
@@ -272,6 +294,34 @@ const createAndRunCmd = async (index: number) => {
     ToastError(lang("pageIndex.shell.cmdEmpty"));
     return;
   }
+
+  // git commit 先弹出输入框，确认后再执行
+  if (index === GIT_COMMIT_INDEX) {
+    pendingCommitIndex.value = index;
+    commitMessage.value = "";
+    isShowCommitModal.value = true;
+    return;
+  }
+
+  await doRunCmd(index);
+};
+
+/** 实际执行命令（含 git commit 确认后的执行） */
+const doRunCmd = async (index: number) => {
+  const item = cmdList.value[index];
+  let cmd = item.cmd;
+  const isAlone = item.isAlone;
+  const isSystemShell = item.isSystemShell;
+
+  if (index === GIT_COMMIT_INDEX) {
+    const msg = commitMessage.value?.trim() || "";
+    if (!msg) {
+      ToastError(lang("pageIndex.shell.commitMessageEmpty"));
+      return;
+    }
+    cmd = `git commit -m "${msg.replace(/"/g, '\\"')}"`;
+  }
+
   const cmdDir = cmd.trim().startsWith("git")
     ? storeShell.vpsimpleConfig.gitBaseDir
     : storeShell.vpsimpleConfig.shellBaseDir;
@@ -293,6 +343,18 @@ const createAndRunCmd = async (index: number) => {
   } else {
     isShowShellLog.value = true;
   }
+};
+
+const confirmCommit = async () => {
+  if (pendingCommitIndex.value < 0) return;
+  const msg = commitMessage.value?.trim();
+  if (!msg) {
+    ToastError(lang("pageIndex.shell.commitMessageEmpty"));
+    return Promise.reject(); // 阻止弹窗关闭
+  }
+  isShowCommitModal.value = false;
+  pendingCommitIndex.value = -1;
+  await doRunCmd(GIT_COMMIT_INDEX);
 };
 
 const saveConfig = () => {

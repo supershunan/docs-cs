@@ -13,6 +13,10 @@ export const ZhShell = {
   runPathEmpty: "起始目录不能为空",
   //"cmd不能为空"
   cmdEmpty: "cmd不能为空",
+  //git commit 弹窗
+  commitMessageTitle: "Git 提交",
+  commitMessagePlaceholder: "请输入提交描述",
+  commitMessageEmpty: "请填写提交描述",
 
   docsBuild: "文档build命令",
   //运行目录
