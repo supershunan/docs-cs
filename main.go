@@ -8,6 +8,7 @@ import (
 	"wailstemplate/application/first"
 	"wailstemplate/application/pkg/cfg"
 	"wailstemplate/application/services"
+	"wailstemplate/application/services/sftp"
 	"wailstemplate/application/services/shell"
 	"wailstemplate/application/services/system"
 	"wailstemplate/application/vitepress/vpsimpler"
@@ -90,6 +91,7 @@ func main() {
 			vpsimpler.NewVpConfig(),
 			system.NewSystemService(),
 			shell.NewShellManager(),
+			sftp.NewSftpService(),
 			services.NewUpdateService(), //在线更新
 			services.NewStaticServer(),
 		},

@@ -19,6 +19,13 @@
           <a href="javascript:;">{{ lang("pageIndex.shell.runLog") }}</a>
         </a-menu-item>
         <hr />
+        <!-- 上传文件到服务器 -->
+        <a-menu-item @click="openUploadModal">
+          <a href="javascript:;">{{
+            lang("pageIndex.shell.uploadToServer")
+          }}</a>
+        </a-menu-item>
+        <hr />
         <!--列表 菜单-->
         <div v-for="(item, index) in cmdList" :key="index">
           <a-menu-item @click="createAndRunCmd(index)">
@@ -160,6 +167,129 @@
     </div>
   </a-modal>
 
+  <!--  上传文件到服务器弹窗-->
+  <a-modal
+    :style="StyleNoDrag"
+    v-model:open="isShowUploadModal"
+    :title="lang('pageIndex.shell.uploadToServer')"
+    :ok-text="lang('common.confirm')"
+    :cancel-text="lang('common.cancel')"
+    :ok-button-props="{ class: 'bg-blue-500' }"
+    @ok="confirmUpload"
+    width="520px"
+  >
+    <div class="space-y-3">
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadHost") }}:</span
+        >
+        <a-input
+          v-model:value="uploadForm.host"
+          :placeholder="lang('pageIndex.shell.uploadHostPlaceholder')"
+          class="flex-1"
+        />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadPort") }}:</span
+        >
+        <a-input
+          v-model:value="uploadForm.port"
+          placeholder="22"
+          class="w-24"
+        />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadUsername") }}:</span
+        >
+        <a-input
+          v-model:value="uploadForm.username"
+          :placeholder="lang('pageIndex.shell.uploadUsernamePlaceholder')"
+          class="flex-1"
+        />
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadAuthMode") }}:</span
+        >
+        <a-radio-group v-model:value="uploadForm.authMode">
+          <a-radio value="password">{{
+            lang("pageIndex.shell.uploadAuthPassword")
+          }}</a-radio>
+          <a-radio value="key">{{
+            lang("pageIndex.shell.uploadAuthKey")
+          }}</a-radio>
+        </a-radio-group>
+      </div>
+      <div
+        v-if="uploadForm.authMode === 'password'"
+        class="flex gap-2 items-center"
+      >
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadPassword") }}:</span
+        >
+        <a-input-password
+          v-model:value="uploadForm.password"
+          :placeholder="lang('pageIndex.shell.uploadPasswordPlaceholder')"
+          class="flex-1"
+        />
+      </div>
+      <template v-if="uploadForm.authMode === 'key'">
+        <div class="flex gap-2 items-center">
+          <span class="w-20 shrink-0"
+            >{{ lang("pageIndex.shell.uploadPrivateKey") }}:</span
+          >
+          <a-input
+            v-model:value="uploadForm.privateKeyPath"
+            :placeholder="lang('pageIndex.shell.uploadPrivateKeyPlaceholder')"
+            class="flex-1"
+            readonly
+          />
+          <a-button @click="selectPrivateKey">{{
+            lang("pageIndex.shell.uploadSelectKey")
+          }}</a-button>
+        </div>
+        <div class="flex gap-2 items-center">
+          <span class="w-20 shrink-0"
+            >{{ lang("pageIndex.shell.uploadKeyPassphrase") }}:</span
+          >
+          <a-input-password
+            v-model:value="uploadForm.keyPassphrase"
+            :placeholder="
+              lang('pageIndex.shell.uploadKeyPassphrasePlaceholder')
+            "
+            class="flex-1"
+          />
+        </div>
+      </template>
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadLocalPath") }}:</span
+        >
+        <a-input
+          v-model:value="uploadForm.localPath"
+          :placeholder="lang('pageIndex.shell.uploadLocalPathPlaceholder')"
+          class="flex-1"
+          readonly
+        />
+        <a-button @click="selectLocalPath">{{
+          lang("pageIndex.shell.uploadSelectLocal")
+        }}</a-button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <span class="w-20 shrink-0"
+          >{{ lang("pageIndex.shell.uploadRemotePath") }}:</span
+        >
+        <a-input
+          v-model:value="uploadForm.remotePath"
+          :placeholder="lang('pageIndex.shell.uploadRemotePathPlaceholder')"
+          class="flex-1"
+        />
+      </div>
+    </div>
+  </a-modal>
+
   <!--  Git Commit 提交描述弹窗-->
   <a-modal
     :style="StyleNoDrag"
@@ -190,7 +320,15 @@ import { useIndexStore } from "@/store";
 import { defaultVpSimple } from "@/configs/defaultVpSimple";
 
 import { useShellStore } from "@/store/shell";
-import { ToastError } from "@/utils/Toast";
+import { ToastError, ToastSuccess } from "@/utils/Toast";
+import {
+  SelectDir,
+  SelectFile,
+} from "../../../wailsjs/go/system/SystemService";
+import {
+  UploadToServer,
+  UploadToServerWithKey,
+} from "../../../wailsjs/go/sftp/SftpService";
 import { SystemWindows } from "@/constant/enums/system";
 import { StyleNoDrag } from "@/configs/cnts";
 import { lang } from "../../utils/language";
@@ -203,8 +341,21 @@ const currShellIndex = ref(0);
 const isShowShellEdit = ref(false);
 const isShowShellLog = ref(false);
 const isShowCommitModal = ref(false);
+const isShowUploadModal = ref(false);
 const commitMessage = ref("");
 const pendingCommitIndex = ref(-1);
+
+const uploadForm = ref({
+  host: "",
+  port: "22",
+  username: "",
+  password: "",
+  authMode: "password" as "password" | "key",
+  privateKeyPath: "",
+  keyPassphrase: "",
+  localPath: "",
+  remotePath: "",
+});
 
 /** cmdList 中 git commit 的索引 */
 const GIT_COMMIT_INDEX = 5;
@@ -355,6 +506,106 @@ const confirmCommit = async () => {
   isShowCommitModal.value = false;
   pendingCommitIndex.value = -1;
   await doRunCmd(GIT_COMMIT_INDEX);
+};
+
+/** 打开上传弹窗（检查 Wails 环境） */
+const openUploadModal = () => {
+  const w =
+    typeof window !== "undefined"
+      ? (window as { go?: { sftp?: { SftpService?: unknown } } })
+      : null;
+  if (!w?.go?.sftp?.SftpService) {
+    ToastError(lang("pageIndex.shell.errorWailsNotAvailable"));
+    return;
+  }
+  uploadForm.value = {
+    host: "",
+    port: "22",
+    username: "",
+    password: "",
+    authMode: "password" as "password" | "key",
+    privateKeyPath: "",
+    keyPassphrase: "",
+    localPath: "",
+    remotePath: "",
+  };
+  isShowUploadModal.value = true;
+};
+
+/** 选择要上传的本地路径（文件或目录） */
+const selectLocalPath = async () => {
+  const dir = await SelectDir(lang("pageIndex.shell.uploadSelectLocalTitle"));
+  if (dir) uploadForm.value.localPath = dir;
+};
+
+/** 选择 SSH 私钥文件 */
+const selectPrivateKey = async () => {
+  const file = await SelectFile(
+    lang("pageIndex.shell.uploadSelectKeyTitle"),
+    "",
+  );
+  if (file) uploadForm.value.privateKeyPath = file;
+};
+
+/** 确认上传到服务器 */
+const confirmUpload = async () => {
+  const f = uploadForm.value;
+  if (IsEmptyValue(f.host) || IsEmptyValue(f.username)) {
+    ToastError(lang("pageIndex.shell.uploadFormEmpty"));
+    return Promise.reject();
+  }
+  if (f.authMode === "password" && IsEmptyValue(f.password)) {
+    ToastError(lang("pageIndex.shell.uploadFormEmpty"));
+    return Promise.reject();
+  }
+  if (f.authMode === "key" && IsEmptyValue(f.privateKeyPath)) {
+    ToastError(lang("pageIndex.shell.uploadPrivateKeyEmpty"));
+    return Promise.reject();
+  }
+  if (IsEmptyValue(f.localPath)) {
+    ToastError(lang("pageIndex.shell.uploadLocalPathEmpty"));
+    return Promise.reject();
+  }
+  if (IsEmptyValue(f.remotePath)) {
+    ToastError(lang("pageIndex.shell.uploadRemotePathEmpty"));
+    return Promise.reject();
+  }
+  const w =
+    typeof window !== "undefined"
+      ? (window as { go?: { sftp?: { SftpService?: unknown } } })
+      : null;
+  if (!w?.go?.sftp?.SftpService) {
+    ToastError(lang("pageIndex.shell.errorWailsNotAvailable"));
+    return Promise.reject();
+  }
+  const port = f.port?.trim() || "22";
+  let err: string;
+  if (f.authMode === "key") {
+    err = await UploadToServerWithKey(
+      f.host,
+      port,
+      f.username,
+      f.privateKeyPath,
+      f.keyPassphrase ?? "",
+      f.localPath,
+      f.remotePath,
+    );
+  } else {
+    err = await UploadToServer(
+      f.host,
+      port,
+      f.username,
+      f.password,
+      f.localPath,
+      f.remotePath,
+    );
+  }
+  if (err) {
+    ToastError(err);
+    return Promise.reject();
+  }
+  ToastSuccess(lang("pageIndex.shell.uploadSuccess"));
+  isShowUploadModal.value = false;
 };
 
 const saveConfig = () => {

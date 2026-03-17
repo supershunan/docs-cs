@@ -13,6 +13,7 @@ require (
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/viper v1.18.1
 	github.com/wailsapp/wails/v2 v2.11.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/sys v0.30.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gorm.io/driver/sqlite v1.5.4
@@ -77,7 +78,6 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
